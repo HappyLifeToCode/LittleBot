@@ -1,0 +1,18 @@
+# 忽略 Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略海量训练数据和预处理的二进制文件
+data/
+*.bin
+*.meta
+
+# 忽略训练输出的模型权重和检查点
+pretrain_out/
+*.pth
+*.pt
+*.ckpt
+
+# 忽略系统文件
+.DS_Store
