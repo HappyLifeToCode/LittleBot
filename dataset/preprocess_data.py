@@ -111,6 +111,7 @@ def preprocess(input_path, output_path, tokenizer_path, seq_len=512, num_workers
             np.array(buffer, dtype=np.uint16).tofile(temp_file)
             buffer = []
 
+        # 完成所有token的生成
         temp_file.close()
 
         print(f"\n总tokens: {total_tokens:,}")

@@ -308,7 +308,7 @@ class MiniBot(nn.Module):
         self.dropout = nn.Dropout(config.dropout)
 
         # Transformer Blocks
-        self.layers = nn.ModuleList([MiniBotConfig(l, config) for l in range(self.num_hidden_layers)])
+        self.layers = nn.ModuleList([MiniBotBlock(l, config) for l in range(self.num_hidden_layers)])
 
         # 最终的 LayerNorm
         self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -389,7 +389,7 @@ class MiniBotForCausalLM(PreTrainedModel, GenerationMixin):
         super().__init__(self.config)
 
         # Transformer 主体
-        self.model = MiniBotConfig(self.config)
+        self.model = MiniBot(self.config)
 
         # Language Modeling Head（与 embed_tokens 权重共享）
         self.lm_head = nn.Linear(self.config.hidden_size, self.config.vocab_size, bias=False)
