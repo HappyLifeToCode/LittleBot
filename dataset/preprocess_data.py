@@ -26,7 +26,7 @@ def _init_worker(tokenizer_path):
 
 
 def _tokenize_line(line):
-    """处理单行数据"""
+    """将单行数据转为token同时结尾加上eos"""
     try:
         line = line.strip()
         if not line:

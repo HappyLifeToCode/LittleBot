@@ -79,12 +79,32 @@ def train_epoch(epoch, loader, iters, start_step=0, swanlab=None, total_steps=No
             }, f'{ckp_dir}/resume.pth')
             Logger(f'Saved checkpoint: {ckp_dir}')
             model.train()
+            # ========== 新增：自动清理旧 Checkpoint 的逻辑 ==========
+            # 获取当前保存目录下所有的 global_step 文件夹
+            import shutil
+            all_ckps = [d for d in os.listdir(full_save_dir) if d.startswith('global_step_')]
 
+            # 只有当存档数量超过 3 个时才进行清理
+            if len(all_ckps) > 3:
+                # 按照 step 数字从小到大排序
+                all_ckps.sort(key=lambda x: int(x.split('_')[-1]))
+
+                # 找出需要删除的老旧存档（除了最后 3 个之外的所有存档）
+                ckps_to_delete = all_ckps[:-3]
+
+                for ckp in ckps_to_delete:
+                    ckp_path_to_delete = os.path.join(full_save_dir, ckp)
+                    try:
+                        shutil.rmtree(ckp_path_to_delete)
+                        Logger(f'Deleted old checkpoint: {ckp_path_to_delete}')
+                    except Exception as e:
+                        Logger(f'Failed to delete old checkpoint {ckp_path_to_delete}: {e}')
+            # =========================================================
         # Benchmark 评测
         if args.eval_bench == 1 and tokenizer is not None and global_step % args.eval_interval == 0:
             model.eval()
-            c3_path = ''
-            xcopa_path = ''
+            c3_path = '../data/benchmark_data/clue_c3_eval_500.jsonl'
+            xcopa_path = '../data/benchmark_data/xcopa_zh_merged.jsonl'
             eval_results = run_benchmark(model, tokenizer, c3_path, xcopa_path)
             if swanlab_run:
                 swanlab_run.log(eval_results, step=global_step)
@@ -99,19 +119,19 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", type=str, default="../pretrain_out", help="模型保存根目录")
     parser.add_argument('--save_weight', default='pretrain', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
-    parser.add_argument("--batch_size", type=int, default=128, help="batch size")
+    parser.add_argument("--batch_size", type=int, default=64, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=1e-3, help="初始学习率")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
-    parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
+    parser.add_argument("--accumulation_steps", type=int, default=2, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=10, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=12, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=512, type=int, help="序列长度")
-    parser.add_argument("--data_path", type=str, default="", help="预处理后的.bin文件路径")
+    parser.add_argument("--data_path", type=str, default="../data/pretrain_data/SpongeBobPRO_pretrain_512_final.bin", help="预处理后的.bin文件路径")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_swanlab", type=int, default=1, choices=[0, 1], help="是否使用swanlab（0=否，1=是）")
@@ -168,7 +188,7 @@ if __name__ == "__main__":
 
     if args.eval_bench == 1:
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained('')
+        tokenizer = AutoTokenizer.from_pretrained('../tokenizer_15k')
         Logger('Tokenizer loaded for benchmark evaluation')
     else:
         tokenizer = None
@@ -206,8 +226,8 @@ if __name__ == "__main__":
     if args.eval_bench == 1 and tokenizer is not None and start_epoch == 0 and start_step == 0:
         Logger('Running initial benchmark evaluation (step 0)...')
         model.eval()
-        c3_path = ''
-        xcopa_path = ''
+        c3_path = '../data/benchmark_data/clue_c3_eval_500.jsonl'
+        xcopa_path = '../data/benchmark_data/xcopa_eval_500.jsonl'
         eval_results = run_benchmark(model, tokenizer, c3_path, xcopa_path)
         if swanlab_run:
             swanlab_run.log(eval_results, step=0)
